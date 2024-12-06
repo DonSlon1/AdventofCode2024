@@ -14,9 +14,9 @@ namespace Day4
                 List<string> lines = new List<string>(File.ReadAllLines("./input.txt"));
 
                 // Validate that there's content to process
-                if (lines.Count == 0)
+                if (lines.Count < 3)
                 {
-                    Console.WriteLine("Input file is empty.");
+                    Console.WriteLine("Input file does not contain enough lines to form an X-MAS pattern.");
                     return;
                 }
 
@@ -26,13 +26,10 @@ namespace Day4
                 // Convert lines to a 2D grid for easier traversal
                 char[,] grid = ConvertToGrid(lines, maxWidth);
 
-                // Words to search for
-                string[] patterns = { "XMAS", "SAMX" };
+                // Perform the X-MAS search and get the total count
+                int totalXMas = CountXMasPatterns(grid);
 
-                // Perform the search and get the total count
-                int totalOccurrences = SearchGrid(grid, patterns);
-
-                Console.WriteLine($"Total occurrences of 'XMAS' and 'SAMX' is: {totalOccurrences}");
+                Console.WriteLine($"Total X-MAS patterns found: {totalXMas}");
             }
             catch (FileNotFoundException)
             {
@@ -74,9 +71,9 @@ namespace Day4
                 for (int col = 0; col < width; col++)
                 {
                     if (col < currentLine.Length)
-                        grid[row, col] = currentLine[col];
+                        grid[row, col] = char.ToUpper(currentLine[col]); // Convert to uppercase for consistency
                     else
-                        grid[row, col] = ' '; // Padding with space
+                        grid[row, col] = '.'; // Use '.' as the placeholder for irrelevant characters
                 }
             }
 
@@ -84,48 +81,23 @@ namespace Day4
         }
 
         /// <summary>
-        /// Searches the grid for specified patterns in all four directions.
+        /// Counts the number of X-MAS patterns in the grid.
         /// </summary>
-        private static int SearchGrid(char[,] grid, string[] patterns)
+        private static int CountXMasPatterns(char[,] grid)
         {
             int count = 0;
             int height = grid.GetLength(0);
             int width = grid.GetLength(1);
-            int patternLength = patterns[0].Length; // Assuming all patterns are the same length
 
-            for (int row = 0; row < height; row++)
+            // Iterate through each cell that can be the center of an X-MAS pattern
+            for (int row = 1; row < height - 1; row++)
             {
-                for (int col = 0; col < width; col++)
+                for (int col = 1; col < width - 1; col++)
                 {
-                    foreach (string pattern in patterns)
+                    if (grid[row, col] == 'A') // Potential center of X-MAS
                     {
-                        // Check Horizontal (Left to Right)
-                        if (col + patternLength <= width)
-                        {
-                            if (MatchPattern(grid, row, col, 0, 1, pattern))
-                                count++;
-                        }
-
-                        // Check Vertical (Top to Bottom)
-                        if (row + patternLength <= height)
-                        {
-                            if (MatchPattern(grid, row, col, 1, 0, pattern))
-                                count++;
-                        }
-
-                        // Check Diagonal (Top-Left to Bottom-Right)
-                        if (row + patternLength <= height && col + patternLength <= width)
-                        {
-                            if (MatchPattern(grid, row, col, 1, 1, pattern))
-                                count++;
-                        }
-
-                        // Check Diagonal (Top-Right to Bottom-Left)
-                        if (row + patternLength <= height && col - patternLength + 1 >= 0)
-                        {
-                            if (MatchPattern(grid, row, col, 1, -1, pattern))
-                                count++;
-                        }
+                        if (IsValidXMas(grid, row, col))
+                            count++;
                     }
                 }
             }
@@ -134,19 +106,56 @@ namespace Day4
         }
 
         /// <summary>
-        /// Checks if a pattern matches starting from (row, col) in the specified direction.
+        /// Checks if the given position is the center of a valid X-MAS pattern.
         /// </summary>
-        private static bool MatchPattern(char[,] grid, int row, int col, int rowDir, int colDir, string pattern)
+        private static bool IsValidXMas(char[,] grid, int row, int col)
         {
-            for (int i = 0; i < pattern.Length; i++)
-            {
-                if (grid[row, col] != pattern[i])
-                    return false;
+            // Define the relative positions for the diagonals
+            // Diagonal 1: Top-Left to Bottom-Right
+            (int dRow, int dCol)[] diag1 = { (-1, -1), (1, 1) };
 
-                row += rowDir;
-                col += colDir;
+            // Diagonal 2: Top-Right to Bottom-Left
+            (int dRow, int dCol)[] diag2 = { (-1, 1), (1, -1) };
+
+            // Check Diagonal 1
+            bool diag1Valid = (IsMAS(grid, row, col, diag1[0].dRow, diag1[0].dCol, diag1[1].dRow, diag1[1].dCol));
+
+            // Check Diagonal 2
+            bool diag2Valid = (IsMAS(grid, row, col, diag2[0].dRow, diag2[0].dCol, diag2[1].dRow, diag2[1].dCol));
+
+            // X-MAS is valid only if both diagonals have valid MAS/SAM sequences
+            return diag1Valid && diag2Valid;
+        }
+
+        /// <summary>
+        /// Checks if the characters at the specified diagonal positions form a MAS or SAM sequence.
+        /// </summary>
+        private static bool IsMAS(char[,] grid, int centerRow, int centerCol, int firstRowOffset, int firstColOffset, int secondRowOffset, int secondColOffset)
+        {
+            char firstChar = grid[centerRow + firstRowOffset, centerCol + firstColOffset];
+            char secondChar = grid[centerRow + secondRowOffset, centerCol + secondColOffset];
+
+            // Check for 'M' and 'S' in both possible orders
+            return (firstChar == 'M' && secondChar == 'S') ||
+                   (firstChar == 'S' && secondChar == 'M');
+        }
+
+        /// <summary>
+        /// (Optional) Prints the grid to the console for debugging purposes.
+        /// </summary>
+        private static void PrintGrid(char[,] grid)
+        {
+            int height = grid.GetLength(0);
+            int width = grid.GetLength(1);
+
+            for (int row = 0; row < height; row++)
+            {
+                for (int col = 0; col < width; col++)
+                {
+                    Console.Write(grid[row, col] + " ");
+                }
+                Console.WriteLine();
             }
-            return true;
         }
     }
 }
